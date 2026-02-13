@@ -24,6 +24,7 @@ public class OrderController : ControllerBase
     {
         
         var orders = await _context.Orders
+            .AsNoTracking()
             .Include(o => o.Items)
             .Select(o=> new OrderDto {
                 OrderId = o.OrderId,
@@ -46,7 +47,9 @@ public class OrderController : ControllerBase
     public async Task<ActionResult<Order>> GetOrderById(int id)
     {
         var order = await _context.Orders
+            .AsNoTracking()
             .Where(o => o.OrderId == id)
+            .Include(o => o.Items)
             .Select(o => new OrderDto {
                 OrderId = o.OrderId,
                 CustomerName = o.CustomerName,

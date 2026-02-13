@@ -40,6 +40,55 @@ public class InventoryController : ControllerBase
         return Ok(items);                       
     }
 
+    [HttpGet("{id}")]
+public async Task<ActionResult<InventoryItem>> GetInventoryItemById(int id)
+{
+    const string allItemsCacheKey = "AllInventoryItems";
+    string singleItemCacheKey = $"InventoryItem_{id}";
+
+    if (_cache.TryGetValue(allItemsCacheKey, out List<InventoryItem>? cachedAllItems) && 
+        cachedAllItems != null)
+    {
+        var itemFromAll = cachedAllItems.FirstOrDefault(i => i.ItemId == id);
+        if (itemFromAll != null)
+        {
+            _cache.Set(singleItemCacheKey, itemFromAll, TimeSpan.FromSeconds(30));
+            return Ok(itemFromAll);
+        }
+    }
+
+    if (_cache.TryGetValue(singleItemCacheKey, out InventoryItem? cachedSingleItem) && 
+        cachedSingleItem != null)
+    {
+        return Ok(cachedSingleItem);
+    }
+
+    var item = await _context.InventoryItems
+        .AsNoTracking()
+        .FirstOrDefaultAsync(i => i.ItemId == id);
+
+    if (item == null)
+    {
+        return NotFound();
+    }
+
+    var cacheOptions = new MemoryCacheEntryOptions
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30)
+    };
+
+    _cache.Set(singleItemCacheKey, item, cacheOptions);
+
+    if (_cache.TryGetValue(allItemsCacheKey, out List<InventoryItem>? existingAll) && existingAll != null)
+    {
+        var updatedAll = existingAll.Where(i => i.ItemId != id).ToList();
+        updatedAll.Add(item);
+        _cache.Set(allItemsCacheKey, updatedAll, cacheOptions);
+    }
+
+    return Ok(item);
+}
+
     [HttpPost]
     [Authorize(Roles = "Manager")]   
     public async Task<ActionResult<InventoryItem>> CreateItem([FromBody] InventoryItemCreateDto dto)
@@ -61,6 +110,7 @@ public class InventoryController : ControllerBase
         await _context.SaveChangesAsync();
 
         _cache.Remove("AllInventoryItems");
+        _cache.Remove($"InventoryItem_{item.ItemId}");
 
         return CreatedAtAction(
             nameof(GetAllItems),                
@@ -85,6 +135,7 @@ public class InventoryController : ControllerBase
         await _context.SaveChangesAsync();
 
         _cache.Remove("AllInventoryItems");
+        _cache.Remove($"InventoryItem_{item.ItemId}");
 
         return NoContent();                     
     }
