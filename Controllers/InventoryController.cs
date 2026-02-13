@@ -23,9 +23,7 @@ public class InventoryController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<InventoryItem>>> GetAllItems()
     {
-        const string caheKey ="AllInventoryItems";
-
-        if(_cache.TryGetValue(caheKey, out List<InventoryItem>? cachedItems) && cachedItems != null)
+        if(_cache.TryGetValue(CacheKeys.AllInventoryItems, out List<InventoryItem>? cachedItems) && cachedItems != null)
         {
             return Ok(cachedItems);
         }
@@ -36,17 +34,16 @@ public class InventoryController : ControllerBase
         {
             AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
         };
-        _cache.Set(caheKey, items, cacheOptions);
+        _cache.Set(CacheKeys.AllInventoryItems, items, cacheOptions);
         return Ok(items);                       
     }
 
     [HttpGet("{id}")]
 public async Task<ActionResult<InventoryItem>> GetInventoryItemById(int id)
 {
-    const string allItemsCacheKey = "AllInventoryItems";
-    string singleItemCacheKey = $"InventoryItem_{id}";
+    string singleItemCacheKey = string.Format(CacheKeys.InventoryItemById, id);
 
-    if (_cache.TryGetValue(allItemsCacheKey, out List<InventoryItem>? cachedAllItems) && 
+    if (_cache.TryGetValue(CacheKeys.AllInventoryItems, out List<InventoryItem>? cachedAllItems) && 
         cachedAllItems != null)
     {
         var itemFromAll = cachedAllItems.FirstOrDefault(i => i.ItemId == id);
@@ -79,11 +76,11 @@ public async Task<ActionResult<InventoryItem>> GetInventoryItemById(int id)
 
     _cache.Set(singleItemCacheKey, item, cacheOptions);
 
-    if (_cache.TryGetValue(allItemsCacheKey, out List<InventoryItem>? existingAll) && existingAll != null)
+    if (_cache.TryGetValue(CacheKeys.AllInventoryItems, out List<InventoryItem>? existingAll) && existingAll != null)
     {
         var updatedAll = existingAll.Where(i => i.ItemId != id).ToList();
         updatedAll.Add(item);
-        _cache.Set(allItemsCacheKey, updatedAll, cacheOptions);
+        _cache.Set(CacheKeys.AllInventoryItems, updatedAll, cacheOptions);
     }
 
     return Ok(item);
@@ -109,8 +106,8 @@ public async Task<ActionResult<InventoryItem>> GetInventoryItemById(int id)
         _context.InventoryItems.Add(item);
         await _context.SaveChangesAsync();
 
-        _cache.Remove("AllInventoryItems");
-        _cache.Remove($"InventoryItem_{item.ItemId}");
+        _cache.Remove(CacheKeys.AllInventoryItems);
+        _cache.Remove(string.Format(CacheKeys.InventoryItemById, item.ItemId));
 
         return CreatedAtAction(
             nameof(GetAllItems),                
@@ -134,8 +131,8 @@ public async Task<ActionResult<InventoryItem>> GetInventoryItemById(int id)
         _context.InventoryItems.Remove(item);
         await _context.SaveChangesAsync();
 
-        _cache.Remove("AllInventoryItems");
-        _cache.Remove($"InventoryItem_{item.ItemId}");
+        _cache.Remove(CacheKeys.AllInventoryItems);
+        _cache.Remove(string.Format(CacheKeys.InventoryItemById, id));
 
         return NoContent();                     
     }

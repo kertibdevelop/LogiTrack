@@ -67,3 +67,8 @@ public class LoginDto
     [Required]
     public string Password { get; set; } = string.Empty;
 }
+
+public class AssignItemsToOrderDto
+{
+    public List<int> ItemIds { get; set; } = new List<int>();
+}
