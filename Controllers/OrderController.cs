@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -10,15 +11,18 @@ using System.Threading.Tasks;
 public class OrderController : ControllerBase
 {
     private readonly LogiTrackContext _context;
+    private readonly IMemoryCache _cache;
 
-    public OrderController(LogiTrackContext context)
+    public OrderController(LogiTrackContext context, IMemoryCache cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Order>>> GetAllOrders()
     {
+        
         var orders = await _context.Orders
             .Include(o => o.Items)
             .Select(o=> new OrderDto {

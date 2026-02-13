@@ -6,6 +6,8 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddMemoryCache();
+
 builder.Services.AddIdentity<ApplicationUser,IdentityRole>(options =>{
     options.Password.RequireDigit = true;
     options.Password.RequiredLength = 6;
